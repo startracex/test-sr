@@ -1,0 +1,42 @@
+name: Publish And Release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  publish-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9.12.3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Set npm token
+        run: |
+          npm config set "//packages.aliyun.com/64d9fc4ceceb191898f638e6/npm/x/:_authToken" "${{ secrets.NPM_TOKEN }}"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Publish
+        run: pnpm -r --workspace-concurrency=1 exec semantic-release -e semantic-release-monorepo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
